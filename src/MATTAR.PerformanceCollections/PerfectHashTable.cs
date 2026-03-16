@@ -1,4 +1,4 @@
-using System;
+8using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -28,9 +28,9 @@ internal unsafe struct PerfectHashTable
     [StructLayout(LayoutKind.Sequential)]
     internal struct Entry
     {
-        public int Key;
-        public int Value;
-        public void* Data;
+        internal int Key;
+        internal int Value;
+        internal void* Data;
     }
 
     internal static PerfectHashTable* Create(int[] keys, int[] values, void** data = null)
