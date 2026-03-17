@@ -19,7 +19,7 @@ internal unsafe struct PerfectHashTable
     {
         internal int Count;
         internal int SubTableSize;
-        public Entry* SubTable;
+        internal Entry* SubTable;
         internal ulong SubHashA;
         internal ulong SubHashB;
         internal int SubHashShift;
