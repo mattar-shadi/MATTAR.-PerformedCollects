@@ -2,29 +2,29 @@
 
 [![NuGet](https://img.shields.io/nuget/v/MATTAR.PerformanceCollections.svg)](https://www.nuget.org/packages/MATTAR.PerformanceCollections/)
 
-Bibliothèque .NET de collections hautes performances reposant sur des allocations natives et des blocs `unsafe`.  
-Elle propose une table de hachage de Cuckoo, une table de hachage parfaite et un arbre de van Emde Boas — trois structures de données orientées vitesse, conçues pour les scénarios où la latence compte.
+High-performance .NET collections built on native allocations and `unsafe` blocks.  
+It provides a Cuckoo hash table, a perfect hash table, and a van Emde Boas tree—three speed-oriented data structures designed for scenarios where latency matters.
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Features
 
-| Structure | Description |
+| Data structure | Description |
 |---|---|
-| **CuckooHashTable** | Table de hachage à déplacement de coucou. Insertions et recherches en O(1) amorti avec un facteur de charge maîtrisé (≤ 45 %). |
-| **PerfectHashTable** | Table de hachage parfaite à deux niveaux (FKS). Construite à partir d'un ensemble de clés statique ; recherches en O(1) strict. |
-| **VanEmdeBoas** | Arbre de van Emde Boas. Deux modes : **dynamique** (Cuckoo, insertions à la volée) et **statique** (PerfectTable, construction à partir d'un ensemble de clés pré-connu, immutable après construction). Successeur/prédécesseur en O(log log U) sur un univers de taille 2^U (U ≤ 30). |
+| **CuckooHashTable** | Cuckoo displacement hash table. Amortized **O(1)** inserts and lookups with controlled load factor (≤ **45%**). |
+| **PerfectHashTable** | Two-level perfect hash table (FKS). Built from a **static** set of keys; strict **O(1)** lookups. |
+| **VanEmdeBoas** | van Emde Boas tree. Two modes: **dynamic** (Cuckoo-based, inserts on the fly) and **static** (PerfectHashTable-based, built from a known key set). |
 
-**Points forts :**
-- Allocation native alignée (via `NativeMemory`) — zéro pression sur le GC.
-- Blocs `unsafe` et inlining agressif (`AggressiveInlining`) pour des performances maximales.
-- Cible .NET 8.
+**Highlights**
+- Aligned native allocation (via `NativeMemory`) — zero GC pressure.
+- `unsafe` blocks + aggressive inlining (`AggressiveInlining`) for maximum performance.
+- Targets **.NET 8**.
 
 ---
 
 ## 📦 Installation
 
-Le package est disponible sur NuGet : [MATTAR.PerformanceCollections](https://www.nuget.org/packages/MATTAR.PerformanceCollections/)
+The package is available on NuGet: [MATTAR.PerformanceCollections](https://www.nuget.org/packages/MATTAR.PerformanceCollections/)
 
 ```bash
 dotnet add package MATTAR.PerformanceCollections
@@ -32,30 +32,31 @@ dotnet add package MATTAR.PerformanceCollections
 
 ---
 
-## 🚀 Utilisation
+## 🚀 Usage
 
-> **Note :** les structures sont des `unsafe struct` allouées nativement. N'oubliez pas d'activer `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` dans votre `.csproj` et d'appeler `Destroy` pour libérer la mémoire.
+> **Note:** these data structures are `unsafe struct`s allocated natively.  
+> Don’t forget to enable `<AllowUnsafeBlocks>true</AllowUnsafeBlocks)>` in your `.csproj`, and call `Destroy` to free native memory.
 
 ### CuckooHashTable
 
 ```csharp
 unsafe
 {
-    // Création (capacité initiale : 64 entrées)
+    // Create (initial capacity: 64 entries)
     CuckooHashTable* table = CuckooHashTable.Create(64);
 
-    // Insertion  (clé != 0 — 0 est la sentinelle "vide")
+    // Insert (key != 0 — 0 is the "empty" sentinel)
     CuckooHashTable.Insert(table, key: 42, value: 100);
 
-    // Recherche
+    // Lookup
     CuckooHashTable.Entry* entry = CuckooHashTable.Find(table, key: 42);
     if (entry != null)
         Console.WriteLine(entry->Value); // 100
 
-    // Suppression
+    // Delete
     CuckooHashTable.Delete(table, key: 42);
 
-    // Libération
+    // Free
     CuckooHashTable.Destroy(table);
 }
 ```
@@ -68,10 +69,10 @@ unsafe
     int[] keys   = { 1, 7, 42, 100 };
     int[] values = { 10, 70, 420, 1000 };
 
-    // Construction à partir d'un ensemble statique de clés
+    // Build from a static key set
     PerfectHashTable* table = PerfectHashTable.Create(keys, values);
 
-    // Recherche en O(1) strict
+    // Strict O(1) lookup
     PerfectHashTable.Entry* entry = PerfectHashTable.Find(table, key: 42);
     if (entry != null)
         Console.WriteLine(entry->Value); // 420
@@ -80,35 +81,35 @@ unsafe
 }
 ```
 
-### VanEmdeBoas – mode dynamique (Cuckoo)
+### VanEmdeBoas – dynamic mode (Cuckoo)
 
 ```csharp
 unsafe
 {
-    // Univers de taille 2^20 (~1 million de valeurs possibles)
+    // Universe size: 2^20 (~1 million possible values)
     UnSafeVanEmdeBoas* veb = UnSafeVanEmdeBoas.Create(universeBits: 20);
 
     UnSafeVanEmdeBoas.Insert(veb, 3);
     UnSafeVanEmdeBoas.Insert(veb, 17);
     UnSafeVanEmdeBoas.Insert(veb, 42);
 
-    // Successeur en O(log log U)
+    // Successor in O(log log U)
     int next = UnSafeVanEmdeBoas.Successor(veb, x: 10); // → 17
 
     UnSafeVanEmdeBoas.Destroy(veb);
 }
 ```
 
-### VanEmdeBoas – mode statique (PerfectTable)
+### VanEmdeBoas – static mode (PerfectTable)
 
-Le mode statique construit l'arbre en une seule passe à partir d'un ensemble de clés connu à l'avance. Les clusters sont indexés via `PerfectHashTable` (FKS) au lieu de `CuckooHashTable`, ce qui garantit des recherches O(1) strict.
+Static mode builds the tree in a single pass from a known key set. Clusters are indexed using `PerfectHashTable` (FKS) instead of `CuckooHashTable`, which enables faster and more compact access when the set is fixed.
 
-> **Limitations du mode statique :**
-> - L'arbre est **immutable** après construction : `Insert` lève `InvalidOperationException`.
-> - Le constructeur exige un tableau de clés non vide ; les doublons et les valeurs hors-univers sont ignorés silencieusement.
+> **Static mode limitations**
+> - The tree is **immutable** after construction: `Insert` throws `InvalidOperationException`.
+> - The builder requires a non-empty key array; duplicates and out-of-universe values are silently ignored.
 
 ```csharp
-// API gérée (recommandée)
+// Managed API (recommended)
 int[] keys = { 100, 200, 500, 1000, 5000 };
 
 using var veb = VanEmdeBoas.CreateStatic(keys, universeBits: 16);
@@ -117,12 +118,12 @@ Console.WriteLine(veb.Min);            // 100
 Console.WriteLine(veb.Successor(200)); // 500
 Console.WriteLine(veb.Max);            // 5000
 
-// L'arbre est immutable : toute tentative d'insertion lève une exception.
+// The tree is immutable: any insertion attempt throws.
 // veb.Insert(42); // → InvalidOperationException
 ```
 
 ```csharp
-// API unsafe (bas niveau)
+// Unsafe API (low-level)
 unsafe
 {
     int[] keys = { 100, 200, 500, 1000, 5000 };
@@ -142,36 +143,36 @@ unsafe
 
 ## 📊 Benchmarks
 
-Des benchmarks comparatifs sont disponibles dans `benchmarks/` et mesurent les performances de `CuckooHashTable` et `PerfectHashTable` face aux collections .NET standard (`Dictionary`, `HashSet`).
+Comparative benchmarks are available in `benchmarks/` and measure `CuckooHashTable` and `PerfectHashTable` against standard .NET collections (`Dictionary`, `HashSet`, etc.).
 
-Lancement rapide :
+Quick run:
 
 ```bash
 dotnet run -c Release --project benchmarks/MATTAR.PerformanceCollections.Benchmarks
 ```
 
-Filtrer par collection :
+Filter by collection:
 
 ```bash
 dotnet run -c Release --project benchmarks/MATTAR.PerformanceCollections.Benchmarks -- --filter *CuckooVsDictionary*
 ```
 
-Voir [BENCHMARKS.md](BENCHMARKS.md) pour la documentation complète (scénarios, paramètres, interprétation des résultats).
+See [BENCHMARKS.md](BENCHMARKS.md) for full documentation (scenarios, parameters, and how to interpret results).
 
 ---
 
-## 📌 Feuille de route
+## 📌 Roadmap
 
-- [x] Table de hachage de Cuckoo
-- [x] Table de hachage parfaite (FKS)
-- [x] Arbre de van Emde Boas
-- [x] Publication NuGet officielle
-- [x] Mode `PerfectTable` pour le vEB statique
+- [x] Cuckoo hash table
+- [x] Perfect hash table (FKS)
+- [x] van Emde Boas tree
+- [x] Official NuGet release
+- [x] `PerfectTable` mode for static vEB
 - [x] Benchmarks (BenchmarkDotNet)
-- [ ] Tests unitaires complets
+- [ ] Complete unit test coverage
 
 ---
 
-## 📄 Licence
+## 📄 License
 
-Ce projet est distribué sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour les détails.
+This project is distributed under the **MIT** license. See [LICENSE](LICENSE) for details.
